@@ -12,6 +12,7 @@ def is_valid_email(email):
     # 一个简单的正则表达式用于验证email
     regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     return re.match(regex, email) is not None
+from flask_jwt_extended import create_access_token
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -57,3 +58,31 @@ def register():
     except Exception as e:
         db.session.rollback() # 如果发生错误，回滚数据库操作
         return jsonify({"error": "服务器内部错误", "details": str(e)}), 500
+    
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    # 1. 从请求中获取JSON数据
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "无效的请求，需要JSON格式的数据"}), 400
+
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "用户名和密码不能为空"}), 400
+
+    # 2. 在数据库中查找用户
+    user = User.query.filter_by(username=username).first()
+
+    # 3. 验证用户是否存在以及密码是否正确
+    #    使用 User 模型中的 check_password 方法
+    if user is None or not user.check_password(password):
+        return jsonify({"error": "用户名或密码错误"}), 401 # 401 Unauthorized
+
+    # 4. 如果验证成功，为用户创建一个 access token
+    #    我们使用 user.id 作为 token 的身份标识
+    access_token = create_access_token(identity=user.id)
+    
+    # 5. 返回 token
+    return jsonify(access_token=access_token)

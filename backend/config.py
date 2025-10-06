@@ -19,3 +19,5 @@ class Config:
         f"{os.environ.get('DB_NAME')}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'iloveb$sanddo&ngqi8anyu'

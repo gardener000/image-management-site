@@ -1,7 +1,7 @@
 # app.py
 from flask import Flask
 from config import Config
-from extensions import db, migrate
+from extensions import db, migrate, jwt
 
 
 def create_app(config_class=Config):
@@ -12,6 +12,7 @@ def create_app(config_class=Config):
     # 将数据库实例与app关联
     db.init_app(app)
     migrate.init_app(app, db)
+    jwt.init_app(app) # <-- 初始化 jwt
 
     # 在这里导入模型，确保它们被SQLAlchemy识别
     from models import User, Image, Tag
