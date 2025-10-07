@@ -6,7 +6,7 @@ from PIL import Image as PILImage # 使用别名避免与 models.Image 冲突
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
-from models import Image, db
+from models import Image, db,Tag
 
 # 创建一个名为 'image' 的蓝图
 image_bp = Blueprint('image', __name__)
@@ -52,10 +52,25 @@ def upload_image():
         try:
             # 提取EXIF信息
             with open(original_path, 'rb') as f:
-                tags = exifread.process_file(f)
+                tags = exifread.process_file(f,details=False)
             
             exif_data = {key: str(val) for key, val in tags.items() if key not in ('JPEGThumbnail', 'TIFFThumbnail')}
             
+            # --- 新增：从EXIF中提取拍摄日期 ---
+            date_time_tag = None
+            if 'EXIF DateTimeOriginal' in tags:
+                # 格式通常是 '2024:10:27 15:30:00'
+                date_str = str(tags['EXIF DateTimeOriginal'])
+                # 尝试解析年份和月份
+                try:
+                    year = date_str.split(':')[0]
+                    month = date_str.split(':')[1]
+                    if year.isdigit() and month.isdigit():
+                        date_time_tag = f"{year}年{month}月"
+                except IndexError:
+                    # 日期格式不规范，忽略
+                    pass
+
             # 使用Pillow库处理图片
             with PILImage.open(original_path) as img:
                 # 获取分辨率
@@ -81,11 +96,29 @@ def upload_image():
                 exif_data=exif_data
             )
             db.session.add(new_image)
+            db.session.flush()
+            
+            # --- 新增：处理自动生成的标签 ---
+            if date_time_tag:
+                # 查找标签是否已存在
+                tag_obj = Tag.query.filter_by(name=date_time_tag).first()
+                
+                # 如果标签不存在，则创建新标签
+                if not tag_obj:
+                    tag_obj = Tag(name=date_time_tag)
+                    db.session.add(tag_obj)
+                    # 再次 flush，让新标签也获得 id
+                    db.session.flush()
+                
+                # 将图片和标签关联起来
+                # 我们在 Image 模型中定义了 tags 关系，可以直接 append
+                new_image.tags.append(tag_obj)
+            # 提交整个事务（图片信息和标签关联）
             db.session.commit()
-
             return jsonify({"message": "图片上传成功", "imageId": new_image.id}), 201
 
         except Exception as e:
+            db.session.rollback()
             # 如果处理过程中出错，需要清理已上传的文件
             if os.path.exists(original_path):
                 os.remove(original_path)
