@@ -21,3 +21,6 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'iloveb$sanddo&ngqi8anyu'
+
+    # 定义图片上传的根目录
+    UPLOAD_FOLDER = os.path.join(basedir, 'uploads')

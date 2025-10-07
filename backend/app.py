@@ -23,7 +23,10 @@ def create_app(config_class=Config):
     # 注册蓝图，并为其添加URL前缀 /api/auth
     # 这样 auth.py 里的 /register 路由就会变成 /api/auth/register
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-
+    from routes.image import image_bp
+    # 为图片API设置统一的前缀 /api/images
+    app.register_blueprint(image_bp, url_prefix='/api/images')
+    
     # 一个简单的测试路由
     @app.route('/')
     def index():

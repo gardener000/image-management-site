@@ -82,7 +82,7 @@ def login():
 
     # 4. 如果验证成功，为用户创建一个 access token
     #    我们使用 user.id 作为 token 的身份标识
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id)) #修改：将 user.id 强制转换为字符串
     
     # 5. 返回 token
     return jsonify(access_token=access_token)
