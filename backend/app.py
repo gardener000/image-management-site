@@ -1,5 +1,6 @@
 # app.py
 from flask import Flask
+from flask_cors import CORS # <-- 1. 导入CORS
 from config import Config
 from extensions import db, migrate, jwt
 
@@ -9,6 +10,11 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # --- 2. 初始化CORS，允许来自所有源的请求 ---
+    # 在开发阶段，可以简单地允许所有源。
+    # 在生产环境中，应该指定允许的前端域名，例如 CORS(app, resources={r"/api/*": {"origins": "http://your-frontend-domain.com"}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    
     # 将数据库实例与app关联
     db.init_app(app)
     migrate.init_app(app, db)
@@ -26,7 +32,7 @@ def create_app(config_class=Config):
     from routes.image import image_bp
     # 为图片API设置统一的前缀 /api/images
     app.register_blueprint(image_bp, url_prefix='/api/images')
-    
+
     # 一个简单的测试路由
     @app.route('/')
     def index():
