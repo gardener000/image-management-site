@@ -13,7 +13,7 @@ const authStore = useAuthStore(); // 2. 获取 store 实例
 
         <!-- 3. 使用 v-if 和 v-else 来根据登录状态显示不同链接 -->
         <template v-if="authStore.isAuthenticated">
-          <RouterLink to="/upload">上传图片</RouterLink>
+          <RouterLink to="/gallery">我的画廊</RouterLink>
           <a href="#" @click.prevent="authStore.logout()">退出</a>
         </template>
         <template v-else>

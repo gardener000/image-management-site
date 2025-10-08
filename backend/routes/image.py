@@ -129,3 +129,26 @@ def upload_image():
 
     else:
         return jsonify({"error": "不允许的文件类型"}), 400
+@image_bp.route('/', methods=['GET'])
+@jwt_required()
+def get_user_images():
+    current_user_id = int(get_jwt_identity())
+    
+    # 从数据库中查询该用户的所有图片，并按上传时间倒序排列
+    images = Image.query.filter_by(user_id=current_user_id).order_by(Image.uploaded_at.desc()).all()
+    
+    # 将图片对象列表转换为字典列表，方便前端处理
+    # 同时构造完整的图片 URL
+    base_url = "http://localhost:5000/uploads/"
+    
+    result = []
+    for img in images:
+        result.append({
+            'id': img.id,
+            'thumbnail_url': base_url + img.thumbnail_path.replace('\\', '/'),
+            'original_url': base_url + img.storage_path.replace('\\', '/'),
+            'filename': img.original_filename,
+            'uploaded_at': img.uploaded_at.isoformat()
+        })
+        
+    return jsonify(result)
