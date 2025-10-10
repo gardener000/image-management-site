@@ -38,7 +38,7 @@ class Image(db.Model):
     resolution = db.Column(db.String(20))
     exif_data = db.Column(db.JSON)
     uploaded_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    tags = db.relationship('Tag', secondary=image_tags,lazy='subquery',
+    tags = db.relationship('Tag', secondary=image_tags,lazy='selectin',
                            backref=db.backref('images', lazy=True))
 
 class Tag(db.Model):

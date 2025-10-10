@@ -19,7 +19,10 @@ class Config:
         f"{os.environ.get('DB_NAME')}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
+    # --- 新增 ---
+    # 设置为 True 会在终端打印出所有执行的 SQL 语句
+    SQLALCHEMY_ECHO = True 
+    # ---
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'iloveb$sanddo&ngqi8anyu'
 
     # 定义图片上传的根目录

@@ -6,7 +6,8 @@ from PIL import Image as PILImage # 使用别名避免与 models.Image 冲突
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
-from models import Image, db,Tag
+from models import Image, db,Tag,image_tags
+from sqlalchemy import and_
 
 # 创建一个名为 'image' 的蓝图
 image_bp = Blueprint('image', __name__)
@@ -129,18 +130,25 @@ def upload_image():
 
     else:
         return jsonify({"error": "不允许的文件类型"}), 400
-@image_bp.route('/', methods=['GET'])
+@image_bp.route('', methods=['GET'])
 @jwt_required()
 def get_user_images():
     current_user_id = int(get_jwt_identity())
+    tag_name = request.args.get('tag', None)
     
-    # 从数据库中查询该用户的所有图片，并按上传时间倒序排列
-    images = Image.query.filter_by(user_id=current_user_id).order_by(Image.uploaded_at.desc()).all()
+    # 1. 初始化基础查询
+    query = Image.query.filter_by(user_id=current_user_id)
     
-    # 将图片对象列表转换为字典列表，方便前端处理
-    # 同时构造完整的图片 URL
+    # 2. 如果 URL 参数中存在 tag, 则在基础查询上追加过滤条件
+    if tag_name:
+        query = query.filter(Image.tags.any(Tag.name == tag_name))
+        
+    # 3. 在【最终形成的 query 对象】上应用排序，并执行查询
+    #    --- 这是关键的修正点 ---
+    images = query.order_by(Image.uploaded_at.desc()).all()
+    
+    # 4. 构造并返回结果 (这部分代码是正确的)
     base_url = "http://localhost:5000/uploads/"
-    
     result = []
     for img in images:
         result.append({
@@ -152,3 +160,62 @@ def get_user_images():
         })
         
     return jsonify(result)
+
+# --- 新增：获取单张图片详情的接口 ---
+@image_bp.route('/<int:image_id>', methods=['GET'])
+@jwt_required()
+def get_image_details(image_id):
+    current_user_id = int(get_jwt_identity())
+    image = Image.query.filter_by(id=image_id, user_id=current_user_id).first_or_404()
+    
+    base_url = "http://localhost:5000/uploads/"
+    
+    return jsonify({
+        'id': image.id,
+        'original_url': base_url + image.storage_path.replace('\\', '/'),
+        'filename': image.original_filename,
+        'uploaded_at': image.uploaded_at.isoformat(),
+        'resolution': image.resolution,
+        'size': image.size,
+        'exif_data': image.exif_data,
+        'tags': [{'id': tag.id, 'name': tag.name} for tag in image.tags]
+    })
+
+# --- 新增：为图片添加标签的接口 ---
+@image_bp.route('/<int:image_id>/tags', methods=['POST'])
+@jwt_required()
+def add_tag_to_image(image_id):
+    current_user_id = int(get_jwt_identity())
+    image = Image.query.filter_by(id=image_id, user_id=current_user_id).first_or_404()
+    
+    data = request.get_json()
+    tag_name = data.get('name')
+    if not tag_name:
+        return jsonify({'error': '标签名不能为空'}), 400
+        
+    # 查找或创建标签
+    tag = Tag.query.filter_by(name=tag_name).first()
+    if not tag:
+        tag = Tag(name=tag_name)
+        db.session.add(tag)
+    
+    # 检查图片是否已经有关联此标签
+    if tag not in image.tags:
+        image.tags.append(tag)
+        db.session.commit()
+    
+    return jsonify({'id': tag.id, 'name': tag.name}), 201
+
+# --- 新增：移除图片标签的接口 ---
+@image_bp.route('/<int:image_id>/tags/<int:tag_id>', methods=['DELETE'])
+@jwt_required()
+def remove_tag_from_image(image_id, tag_id):
+    current_user_id = int(get_jwt_identity())
+    image = Image.query.filter_by(id=image_id, user_id=current_user_id).first_or_404()
+    tag = Tag.query.get_or_404(tag_id)
+    
+    if tag in image.tags:
+        image.tags.remove(tag)
+        db.session.commit()
+        
+    return jsonify({'message': '标签已移除'}), 200

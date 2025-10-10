@@ -29,7 +29,9 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     from routes.image import image_bp
     app.register_blueprint(image_bp, url_prefix='/api/images')
-
+    # --- 新增 ---
+    from routes.tag import tag_bp
+    app.register_blueprint(tag_bp, url_prefix='/api/tags')
     # 一个简单的测试路由
     @app.route('/')
     def index():
