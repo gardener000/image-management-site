@@ -130,7 +130,7 @@ def upload_image():
 
     else:
         return jsonify({"error": "不允许的文件类型"}), 400
-@image_bp.route('', methods=['GET'])
+@image_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_user_images():
     current_user_id = int(get_jwt_identity())

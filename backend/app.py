@@ -15,7 +15,10 @@ def create_app(config_class=Config):
     def serve_uploads(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, 
+         resources={r"/api/*": {"origins": "*"}},
+         allow_headers=["Authorization", "Content-Type"], 
+         supports_credentials=True)
 
     # 将数据库实例与app关联
     db.init_app(app)
