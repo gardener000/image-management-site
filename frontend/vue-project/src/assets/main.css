@@ -1,7 +1,8 @@
 @import './base.css';
 
 /* 全局深色主题 */
-html, body {
+html,
+body {
   background: #000;
   margin: 0;
   padding: 0;
@@ -13,7 +14,8 @@ html, body {
   margin: 0;
   padding: 0;
   font-weight: normal;
-  padding-top: 48px; /* 为固定导航栏留出空间 */
+  padding-top: 48px;
+  /* 为固定导航栏留出空间 */
   background: #000;
   min-height: 100vh;
 }
@@ -31,4 +33,10 @@ a:hover {
 /* 移除之前的绿色链接样式 */
 .green {
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Element Plus 消息提示位置调整，避免被导航栏遮挡 */
+.el-message {
+  top: 60px !important;
+  z-index: 10000 !important;
 }
