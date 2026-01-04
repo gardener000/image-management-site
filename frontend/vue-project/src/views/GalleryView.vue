@@ -40,6 +40,7 @@
       :image-id="selectedImageId"
       v-model:visible="detailsDialogVisible"
       @close="handleDialogClose"
+      @image-updated="fetchImages"
     />
   </div>
 </template>

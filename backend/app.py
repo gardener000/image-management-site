@@ -16,7 +16,10 @@ def create_app(config_class=Config):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     CORS(app, 
-         resources={r"/api/*": {"origins": "*"}},
+         resources={
+             r"/api/*": {"origins": "*"},
+             r"/uploads/*": {"origins": "*"}
+             },
          allow_headers=["Authorization", "Content-Type"], 
          supports_credentials=True)
 
