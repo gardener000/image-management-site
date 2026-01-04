@@ -5,8 +5,12 @@
       <div class="carousel-header">
         <span class="image-counter">{{ currentIndex + 1 }} / {{ images.length }}</span>
         <div class="header-controls">
-          <el-button :icon="isPlaying ? 'VideoPause' : 'VideoPlay'" circle @click="toggleAutoPlay" :title="isPlaying ? '暂停' : '自动播放'" />
-          <el-button icon="Close" circle @click="close" title="关闭 (ESC)" />
+          <el-button circle @click="toggleAutoPlay" :title="isPlaying ? '暂停' : '自动播放'" class="control-btn">
+            <el-icon><component :is="isPlaying ? 'VideoPause' : 'VideoPlay'" /></el-icon>
+          </el-button>
+          <el-button circle @click="close" title="关闭 (ESC)" class="control-btn">
+            <el-icon><Close /></el-icon>
+          </el-button>
         </div>
       </div>
 
@@ -43,7 +47,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
+import { ArrowLeft, ArrowRight, Close, VideoPause, VideoPlay } from '@element-plus/icons-vue';
 
 const props = defineProps({
   images: {
@@ -169,7 +173,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.95);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -194,14 +198,18 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.header-controls .el-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
+.header-controls .el-button,
+.control-btn {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  backdrop-filter: blur(10px);
 }
 
-.header-controls .el-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+.header-controls .el-button:hover,
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+  transform: scale(1.1);
 }
 
 .carousel-main {

@@ -36,9 +36,9 @@
         <el-button 
           type="success" 
           :disabled="selectedImages.length === 0"
-          @click="startCarousel"
+          @click="confirmAndPlay"
         >
-          🎬 开始轮播
+          ✅ 确认并播放
         </el-button>
       </div>
     </div>
@@ -81,24 +81,20 @@
       @close="handleDialogClose"
       @image-updated="fetchImages"
     />
-    
-    <!-- 轮播组件 -->
-    <ImageCarousel
-      :images="carouselImages"
-      v-model:visible="carouselVisible"
-      :start-index="0"
-      @close="carouselVisible = false"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import ImageUpload from '@/components/ImageUpload.vue';
 import ImageDetailsDialog from '@/components/ImageDetailsDialog.vue';
-import ImageCarousel from '@/components/ImageCarousel.vue';
 import apiClient from '@/api/axios.js';
 import { ElMessage } from 'element-plus';
+import { slideshowStore } from '@/stores/slideshowStore.js';
+
+const route = useRoute();
+const router = useRouter();
 
 const images = ref([]);
 const loading = ref(true);
@@ -112,10 +108,6 @@ const detailsDialogVisible = ref(false);
 // --- 选择模式相关状态 ---
 const isSelectMode = ref(false);
 const selectedImages = ref([]); // 存储选中的图片对象
-
-// --- 轮播相关状态 ---
-const carouselVisible = ref(false);
-const carouselImages = computed(() => selectedImages.value);
 
 // 切换选择模式
 const toggleSelectMode = () => {
@@ -150,10 +142,14 @@ const clearSelection = () => {
   selectedImages.value = [];
 };
 
-// 开始轮播
-const startCarousel = () => {
+// 确认选择并跳转到首页播放
+const confirmAndPlay = () => {
   if (selectedImages.value.length > 0) {
-    carouselVisible.value = true;
+    // 保存选中的图片到存储
+    slideshowStore.setImages(selectedImages.value);
+    // 跳转到首页
+    router.push('/');
+    ElMessage.success('已选择 ' + selectedImages.value.length + ' 张图片，开始播放');
   }
 };
 
@@ -215,6 +211,11 @@ const handleDialogClose = () => {
 
 onMounted(() => {
   fetchImages();
+  
+  // 检查是否需要自动进入选择模式（从首页跳转过来时）
+  if (route.query.select === 'true') {
+    isSelectMode.value = true;
+  }
 });
 </script>
 
