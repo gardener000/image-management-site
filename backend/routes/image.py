@@ -241,7 +241,8 @@ def get_user_images():
             'thumbnail_url': base_url + img.thumbnail_path.replace('\\', '/'),
             'original_url': base_url + img.storage_path.replace('\\', '/'),
             'filename': img.original_filename,
-            'uploaded_at': img.uploaded_at.isoformat()
+            'uploaded_at': img.uploaded_at.isoformat(),
+            'tags': [{'id': tag.id, 'name': tag.name} for tag in img.tags]
         })
         
     return jsonify(result)

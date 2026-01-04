@@ -39,6 +39,11 @@
             <button class="pill-btn" @click="goToGallery">选择图片</button>
             <div class="slide-info">
               <span class="slide-title">{{ currentImage?.filename }}</span>
+              <div class="slide-tags" v-if="currentImage?.tags?.length">
+                <span class="tag-item" v-for="tag in currentImage.tags" :key="tag.id">
+                  📍 {{ tag.name }}
+                </span>
+              </div>
               <span class="slide-meta">{{ formatDate(currentImage?.uploaded_at) }}</span>
             </div>
           </div>
@@ -350,6 +355,23 @@ onUnmounted(stopPlay);
 .slide-meta {
   color: rgba(255,255,255,0.6);
   font-size: 13px;
+}
+
+.slide-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.9);
 }
 
 /* 指示器 */
