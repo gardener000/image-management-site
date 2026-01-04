@@ -142,11 +142,8 @@ onUnmounted(stopPlay);
 <style scoped>
 /* 剧场页面 - 全屏深色 */
 .theater-page {
-  position: fixed;
-  top: 48px; /* 导航栏高度 */
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  min-height: calc(100vh - 48px);
   background: #000;
   display: flex;
   flex-direction: column;
