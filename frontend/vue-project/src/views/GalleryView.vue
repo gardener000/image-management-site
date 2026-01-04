@@ -2,19 +2,45 @@
   <div class="gallery-page">
     <div class="header-section">
       <h1>我的画廊</h1>
-      <!-- 1. 添加搜索框 -->
-      <el-input
-        v-model="searchTerm"
-        placeholder="按标签搜索..."
-        class="search-input"
-        @keyup.enter="performSearch"
-        clearable
-        @clear="performSearch"
-      >
-        <template #append>
-          <el-button @click="performSearch">搜索</el-button>
-        </template>
-      </el-input>
+      <div class="header-controls">
+        <!-- 搜索框 -->
+        <el-input
+          v-model="searchTerm"
+          placeholder="按标签搜索..."
+          class="search-input"
+          @keyup.enter="performSearch"
+          clearable
+          @clear="performSearch"
+        >
+          <template #append>
+            <el-button @click="performSearch">搜索</el-button>
+          </template>
+        </el-input>
+        
+        <!-- 选择模式切换 -->
+        <el-button 
+          :type="isSelectMode ? 'primary' : 'default'" 
+          @click="toggleSelectMode"
+        >
+          {{ isSelectMode ? '退出选择' : '选择图片' }}
+        </el-button>
+      </div>
+    </div>
+    
+    <!-- 选择模式工具栏 -->
+    <div v-if="isSelectMode" class="selection-toolbar">
+      <span>已选择 {{ selectedImages.length }} 张图片</span>
+      <div class="selection-actions">
+        <el-button @click="selectAll">全选</el-button>
+        <el-button @click="clearSelection">取消全选</el-button>
+        <el-button 
+          type="success" 
+          :disabled="selectedImages.length === 0"
+          @click="startCarousel"
+        >
+          🎬 开始轮播
+        </el-button>
+      </div>
     </div>
     
     <ImageUpload @upload-success="handleUploadSuccess" />
@@ -25,8 +51,21 @@
       <span v-else>这里空空如也，快去上传你的第一张图片吧！</span>
     </div>
     <div v-else class="image-grid">
-      <!-- 2. 修改点击事件 -->
-      <el-card v-for="image in images" :key="image.id" class="image-card" shadow="hover" @click="openImageDetails(image.id)">
+      <el-card 
+        v-for="image in images" 
+        :key="image.id" 
+        class="image-card" 
+        :class="{ selected: isImageSelected(image.id) }"
+        shadow="hover" 
+        @click="handleImageClick(image)"
+      >
+        <!-- 选择模式下的勾选框 -->
+        <div v-if="isSelectMode" class="select-checkbox" @click.stop>
+          <el-checkbox 
+            :model-value="isImageSelected(image.id)"
+            @change="toggleImageSelection(image)"
+          />
+        </div>
         <img :src="image.thumbnail_url" class="image" />
         <div class="image-info">
           <span>{{ image.filename }}</span>
@@ -34,7 +73,7 @@
       </el-card>
     </div>
 
-    <!-- 3. 图片详情对话框 -->
+    <!-- 图片详情对话框 -->
     <ImageDetailsDialog 
       v-if="selectedImageId"
       :image-id="selectedImageId"
@@ -42,13 +81,22 @@
       @close="handleDialogClose"
       @image-updated="fetchImages"
     />
+    
+    <!-- 轮播组件 -->
+    <ImageCarousel
+      :images="carouselImages"
+      v-model:visible="carouselVisible"
+      :start-index="0"
+      @close="carouselVisible = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import ImageUpload from '@/components/ImageUpload.vue';
-import ImageDetailsDialog from '@/components/ImageDetailsDialog.vue'; // 稍后创建
+import ImageDetailsDialog from '@/components/ImageDetailsDialog.vue';
+import ImageCarousel from '@/components/ImageCarousel.vue';
 import apiClient from '@/api/axios.js';
 import { ElMessage } from 'element-plus';
 
@@ -61,15 +109,72 @@ const lastSearchTerm = ref('');
 const selectedImageId = ref(null);
 const detailsDialogVisible = ref(false);
 
-// 获取图片列表的函数（已重构）
+// --- 选择模式相关状态 ---
+const isSelectMode = ref(false);
+const selectedImages = ref([]); // 存储选中的图片对象
+
+// --- 轮播相关状态 ---
+const carouselVisible = ref(false);
+const carouselImages = computed(() => selectedImages.value);
+
+// 切换选择模式
+const toggleSelectMode = () => {
+  isSelectMode.value = !isSelectMode.value;
+  if (!isSelectMode.value) {
+    clearSelection();
+  }
+};
+
+// 检查图片是否被选中
+const isImageSelected = (imageId) => {
+  return selectedImages.value.some(img => img.id === imageId);
+};
+
+// 切换单个图片的选中状态
+const toggleImageSelection = (image) => {
+  const index = selectedImages.value.findIndex(img => img.id === image.id);
+  if (index === -1) {
+    selectedImages.value.push(image);
+  } else {
+    selectedImages.value.splice(index, 1);
+  }
+};
+
+// 全选
+const selectAll = () => {
+  selectedImages.value = [...images.value];
+};
+
+// 取消全选
+const clearSelection = () => {
+  selectedImages.value = [];
+};
+
+// 开始轮播
+const startCarousel = () => {
+  if (selectedImages.value.length > 0) {
+    carouselVisible.value = true;
+  }
+};
+
+// 处理图片点击
+const handleImageClick = (image) => {
+  if (isSelectMode.value) {
+    toggleImageSelection(image);
+  } else {
+    openImageDetails(image.id);
+  }
+};
+
+// 获取图片列表的函数
 const fetchImages = async (tag = '') => {
   loading.value = true;
-  isSearching.value = !!tag; // 如果 tag 不为空，则认为是搜索状态
+  isSearching.value = !!tag;
   lastSearchTerm.value = tag;
 
   try {
     const response = await apiClient.get('/images/', {
-      params: { tag: tag || undefined } // 如果tag为空，则不发送该参数
+      params: { tag: tag || undefined }
     });
     images.value = response.data;
   } catch (error) {
@@ -87,8 +192,6 @@ const performSearch = () => {
 
 // 上传成功后的处理
 const handleUploadSuccess = () => {
-  // 如果当前正在搜索，则不刷新列表，让用户保持在搜索结果页
-  // 如果不在搜索，则刷新列表显示最新图片
   if (!isSearching.value) {
     fetchImages();
   } else {
@@ -105,7 +208,6 @@ const openImageDetails = (id) => {
 // 关闭详情弹窗
 const handleDialogClose = () => {
   detailsDialogVisible.value = false;
-  // 使用 setTimeout 延迟清空ID，避免在弹窗关闭动画完成前组件被销毁
   setTimeout(() => {
     selectedImageId.value = null;
   }, 300);
@@ -156,5 +258,83 @@ onMounted(() => {
   text-align: center;
   margin-top: 50px;
   color: #888;
+}
+
+/* 头部控件容器 */
+.header-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* 选择模式工具栏 */
+.selection-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: white;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 选中状态的图片卡片 */
+.image-card.selected {
+  outline: 3px solid #409eff;
+  outline-offset: -3px;
+}
+
+.image-card {
+  position: relative;
+}
+
+/* 勾选框 */
+.select-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+/* 手机端响应式 */
+@media (max-width: 768px) {
+  .header-section {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .header-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .search-input {
+    width: 100%;
+  }
+  
+  .selection-toolbar {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .selection-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 }
 </style>
