@@ -49,4 +49,4 @@ app = create_app()
 # 这段代码使得我们可以直接运行 python app.py 来启动服务器
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')

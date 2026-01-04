@@ -4,7 +4,7 @@
     <el-dialog
       :model-value="visible"
       title="图片详情"
-      width="60%"
+      :width="isMobile ? '95%' : '60%'"
       @close="closeDialog"
     >
       <div v-if="loading" class="dialog-loading">加载中...</div>
@@ -79,11 +79,22 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
 import apiClient from '@/api/axios.js';
 import { ElMessage , ElMessageBox} from 'element-plus';
 import ImageCropper from './ImageCropper.vue'; // 引入裁剪器组件
 import ImageColorEditor from './ImageColorEditor.vue'; // 引入色调调整组件
+
+// 响应式判断是否为手机端
+const windowWidth = ref(window.innerWidth);
+const isMobile = computed(() => windowWidth.value < 768);
+
+// 监听窗口大小变化
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    windowWidth.value = window.innerWidth;
+  });
+}
 
 const props = defineProps({
   imageId: {
@@ -259,5 +270,38 @@ const handleInputConfirm = async () => {
 }
 .actions-section {
   margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 手机端响应式样式 */
+@media (max-width: 768px) {
+  .details-content {
+    flex-direction: column;
+  }
+  
+  .image-preview {
+    flex: none;
+    width: 100%;
+  }
+  
+  .image-preview img {
+    max-height: 40vh;
+  }
+  
+  .info-panel {
+    flex: none;
+    width: 100%;
+  }
+  
+  .actions-section {
+    flex-direction: column;
+  }
+  
+  .actions-section .el-button {
+    width: 100%;
+    margin: 0;
+  }
 }
 </style>

@@ -147,8 +147,8 @@ def get_user_images():
     #    --- 这是关键的修正点 ---
     images = query.order_by(Image.uploaded_at.desc()).all()
     
-    # 4. 构造并返回结果 (这部分代码是正确的)
-    base_url = "http://localhost:5000/uploads/"
+    # 4. 构造并返回结果 (动态获取主机地址)
+    base_url = request.host_url + "uploads/"
     result = []
     for img in images:
         result.append({
@@ -168,7 +168,7 @@ def get_image_details(image_id):
     current_user_id = int(get_jwt_identity())
     image = Image.query.filter_by(id=image_id, user_id=current_user_id).first_or_404()
     
-    base_url = "http://localhost:5000/uploads/"
+    base_url = request.host_url + "uploads/"
     
     return jsonify({
         'id': image.id,
@@ -329,7 +329,7 @@ def edit_image(image_id):
             db.session.commit()
             
             # 构造新的URL返回给前端
-            base_url = "http://localhost:5000/uploads/"
+            base_url = request.host_url + "uploads/"
             return jsonify({
                 'message': '图片编辑成功',
                 'new_urls': {
