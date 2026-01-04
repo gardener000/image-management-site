@@ -30,3 +30,7 @@ class Config:
     
     # 高德地图 API Key（用于GPS逆地理编码）
     AMAP_API_KEY = os.environ.get('AMAP_API_KEY') or '70359202ee04f17b6cccde8c709f075c'
+    
+    # 百度 AI API（用于图片内容识别）
+    BAIDU_API_KEY = os.environ.get('BAIDU_API_KEY') or '1xDSi4T1GGwAK3qX8xYfocvo'
+    BAIDU_SECRET_KEY = os.environ.get('BAIDU_SECRET_KEY') or 'f8FpQtbRKLDaLXm0ta7YNJkvmFkdePGS'

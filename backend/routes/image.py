@@ -82,6 +82,54 @@ def reverse_geocode_amap(lat, lon, api_key):
         print(f"逆地理编码失败: {e}")
         return None
 
+# --- 百度AI图片识别辅助函数 ---
+def get_baidu_access_token(api_key, secret_key):
+    """获取百度AI的access_token"""
+    url = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}"
+    try:
+        response = requests.post(url, timeout=10)
+        data = response.json()
+        return data.get('access_token')
+    except Exception as e:
+        print(f"获取百度access_token失败: {e}")
+        return None
+
+def analyze_image_with_baidu(image_path, api_key, secret_key):
+    """使用百度AI识别图片内容，返回标签列表"""
+    import base64
+    
+    access_token = get_baidu_access_token(api_key, secret_key)
+    if not access_token:
+        return []
+    
+    try:
+        # 读取图片并转为base64
+        with open(image_path, 'rb') as f:
+            image_data = base64.b64encode(f.read()).decode('utf-8')
+        
+        # 调用通用物体和场景识别API
+        url = f"https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general?access_token={access_token}"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data = {'image': image_data}
+        
+        response = requests.post(url, headers=headers, data=data, timeout=15)
+        result = response.json()
+        
+        tags = []
+        if 'result' in result:
+            for item in result['result'][:5]:  # 取前5个识别结果
+                keyword = item.get('keyword', '')
+                score = item.get('score', 0)
+                # 只取置信度大于0.3的结果
+                if keyword and score > 0.3:
+                    tags.append(keyword)
+        
+        print(f"百度AI识别结果: {tags}")
+        return tags
+    except Exception as e:
+        print(f"百度AI识别失败: {e}")
+        return []
+
 @image_bp.route('/upload', methods=['POST'])
 @jwt_required() # <--- 这是一个“保护器”，确保只有携带有效JWT的请求才能访问此路由
 def upload_image():
@@ -185,6 +233,13 @@ def upload_image():
                 auto_tags.append(date_time_tag)
             if location_tag:
                 auto_tags.append(location_tag)
+            
+            # --- 新增：使用百度AI识别图片内容 ---
+            baidu_api_key = current_app.config.get('BAIDU_API_KEY')
+            baidu_secret_key = current_app.config.get('BAIDU_SECRET_KEY')
+            if baidu_api_key and baidu_secret_key:
+                ai_tags = analyze_image_with_baidu(original_path, baidu_api_key, baidu_secret_key)
+                auto_tags.extend(ai_tags)
             
             for tag_name in auto_tags:
                 # 查找标签是否已存在
