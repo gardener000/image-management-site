@@ -249,42 +249,81 @@ def delete_image(image_id):
         db.session.rollback()
         return jsonify({'error': '删除失败', 'details': str(e)}), 500
 
-# --- 新增：编辑图片的接口（目前只实现裁剪） ---
+# --- 编辑图片的接口（支持裁剪和色调调整） ---
 @image_bp.route('/<int:image_id>/edit', methods=['POST'])
 @jwt_required()
 def edit_image(image_id):
+    from PIL import ImageEnhance
+    
     current_user_id = int(get_jwt_identity())
     image = Image.query.filter_by(id=image_id, user_id=current_user_id).first_or_404()
     
     data = request.get_json()
-    if not data or 'crop' not in data:
-        return jsonify({'error': '缺少裁剪参数'}), 400
-        
-    crop_params = data['crop']
-    x = int(crop_params.get('x'))
-    y = int(crop_params.get('y'))
-    width = int(crop_params.get('width'))
-    height = int(crop_params.get('height'))
+    if not data:
+        return jsonify({'error': '缺少编辑参数'}), 400
+    
+    # 获取可选的编辑参数
+    crop_params = data.get('crop')
+    color_params = data.get('color_adjust')
+    
+    if not crop_params and not color_params:
+        return jsonify({'error': '需要提供 crop 或 color_adjust 参数'}), 400
 
     upload_folder = current_app.config['UPLOAD_FOLDER']
     original_path = os.path.join(upload_folder, image.storage_path)
     
     try:
         with PILImage.open(original_path) as img:
-            # 1. 执行裁剪
-            cropped_img = img.crop((x, y, x + width, y + height))
+            # 确保图像模式兼容 ImageEnhance
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
             
-            # 2. 覆盖保存原始文件
-            # 注意：这里会覆盖原图，也可以选择另存为新文件
-            cropped_img.save(original_path)
+            processed_img = img.copy()
+            new_width, new_height = img.size
             
-            # 3. 重新生成缩略图
+            # 1. 执行裁剪（如果有裁剪参数）
+            if crop_params:
+                x = int(crop_params.get('x'))
+                y = int(crop_params.get('y'))
+                width = int(crop_params.get('width'))
+                height = int(crop_params.get('height'))
+                processed_img = processed_img.crop((x, y, x + width, y + height))
+                new_width, new_height = width, height
+            
+            # 2. 执行色调调整（如果有色调参数）
+            if color_params:
+                # 亮度调整: 前端传 -100 到 100，转换为 0 到 2 的增强因子
+                brightness = color_params.get('brightness', 0)
+                if brightness != 0:
+                    factor = 1 + (brightness / 100)
+                    enhancer = ImageEnhance.Brightness(processed_img)
+                    processed_img = enhancer.enhance(factor)
+                
+                # 对比度调整: 前端传 -100 到 100，转换为 0 到 2 的增强因子
+                contrast = color_params.get('contrast', 0)
+                if contrast != 0:
+                    factor = 1 + (contrast / 100)
+                    enhancer = ImageEnhance.Contrast(processed_img)
+                    processed_img = enhancer.enhance(factor)
+                
+                # 饱和度调整: 前端传 -100 到 100，转换为 0 到 2 的增强因子
+                saturation = color_params.get('saturation', 0)
+                if saturation != 0:
+                    factor = 1 + (saturation / 100)
+                    enhancer = ImageEnhance.Color(processed_img)
+                    processed_img = enhancer.enhance(factor)
+            
+            # 3. 保存处理后的图片
+            processed_img.save(original_path)
+            
+            # 4. 重新生成缩略图
             thumbnail_path = os.path.join(upload_folder, image.thumbnail_path)
-            cropped_img.thumbnail((400, 400))
-            cropped_img.save(thumbnail_path)
+            thumb_img = processed_img.copy()
+            thumb_img.thumbnail((400, 400))
+            thumb_img.save(thumbnail_path)
             
-            # 4. 更新数据库中的图片信息
-            image.resolution = f"{width}x{height}"
+            # 5. 更新数据库中的图片信息
+            image.resolution = f"{new_width}x{new_height}"
             image.size = os.path.getsize(original_path)
             
             db.session.commit()
@@ -292,13 +331,13 @@ def edit_image(image_id):
             # 构造新的URL返回给前端
             base_url = "http://localhost:5000/uploads/"
             return jsonify({
-                'message': '图片裁剪成功',
+                'message': '图片编辑成功',
                 'new_urls': {
-                    'original_url': base_url + image.storage_path.replace('\\', '/') + f'?v={uuid.uuid4()}', # 添加版本号强制浏览器刷新缓存
+                    'original_url': base_url + image.storage_path.replace('\\', '/') + f'?v={uuid.uuid4()}',
                     'thumbnail_url': base_url + image.thumbnail_path.replace('\\', '/') + f'?v={uuid.uuid4()}'
                 }
             })
             
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': '裁剪失败', 'details': str(e)}), 500
+        return jsonify({'error': '编辑失败', 'details': str(e)}), 500

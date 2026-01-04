@@ -49,7 +49,8 @@
           <!-- 操作部分 -->
           <h3>操作</h3>
           <div class="actions-section">
-            <el-button type="primary" @click="openCropper">编辑</el-button>
+            <el-button type="primary" @click="openCropper">裁剪</el-button>
+            <el-button type="primary" @click="openColorEditor">调整色调</el-button>
             <el-button type="danger" @click="handleDeleteImage">删除</el-button>
           </div>
           
@@ -65,6 +66,15 @@
       v-model:visible="cropperVisible"
       @crop-success="handleCropSuccess"
     />
+    
+    <!-- 色调调整组件 -->
+    <ImageColorEditor
+      v-if="colorEditorVisible"
+      :image-id="imageId"
+      :image-url="imageDetails.original_url"
+      v-model:visible="colorEditorVisible"
+      @adjust-success="handleColorAdjustSuccess"
+    />
   </div> <!-- 根 div 结束 -->
 </template>
 
@@ -73,6 +83,7 @@ import { ref, watch, nextTick } from 'vue';
 import apiClient from '@/api/axios.js';
 import { ElMessage , ElMessageBox} from 'element-plus';
 import ImageCropper from './ImageCropper.vue'; // 引入裁剪器组件
+import ImageColorEditor from './ImageColorEditor.vue'; // 引入色调调整组件
 
 const props = defineProps({
   imageId: {
@@ -91,6 +102,7 @@ const loading = ref(true);
 const imageDetails = ref(null);
 const imagePreviewRef = ref(null); // 对预览图的引用
 const cropperVisible = ref(false);
+const colorEditorVisible = ref(false);
 const inputVisible = ref(false);
 const inputValue = ref('');
 const InputRef = ref(null); // 用于获取 input 元素的引用
@@ -132,6 +144,20 @@ const handleCropSuccess = (newUrls) => {
   }
   emit('image-updated'); // 同时通知父组件刷新列表（因为缩略图也变了）
 };
+
+// --- 5. 色调调整逻辑 ---
+const openColorEditor = () => {
+  colorEditorVisible.value = true;
+};
+
+const handleColorAdjustSuccess = (newUrls) => {
+  // 色调调整成功后，更新图片URL
+  if (imageDetails.value) {
+    imageDetails.value.original_url = newUrls.original_url;
+  }
+  emit('image-updated'); // 通知父组件刷新列表
+};
+
 // 监听 imageId 的变化，当它有值时，获取图片详情
 watch(() => props.imageId, async (newId) => {
   if (newId) {
