@@ -63,7 +63,7 @@ const onSubmit = async () => {
 <style scoped>
 .auth-page {
   min-height: calc(100vh - 48px);
-  background: #000;
+  background: radial-gradient(ellipse at center, #1a1a1a 0%, #000 70%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,12 +82,12 @@ const onSubmit = async () => {
 }
 
 .auth-title {
-  font-size: 32px;
-  font-weight: 300;
+  font-size: 36px;
+  font-weight: 200;
   color: #fff;
   text-align: center;
   margin: 0 0 8px;
-  letter-spacing: 4px;
+  letter-spacing: 12px;
 }
 
 .auth-subtitle {
@@ -106,35 +106,51 @@ const onSubmit = async () => {
 .input-group {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 14px;
-  padding: 0 16px;
-  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0 18px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .input-group:focus-within {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .input-icon {
-  font-size: 18px;
-  opacity: 0.5;
-  margin-right: 12px;
+  font-size: 15px;
+  opacity: 0.4;
+  margin-right: 14px;
+  line-height: 1;
 }
 
 .input-group input {
   flex: 1;
-  background: transparent;
-  border: none;
-  padding: 16px 0;
-  color: #fff;
+  background: transparent !important;
+  border: none !important;
+  padding: 18px 0;
+  color: #fff !important;
   font-size: 15px;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .input-group input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* 覆盖浏览器自动填充样式 */
+.input-group input:-webkit-autofill,
+.input-group input:-webkit-autofill:hover,
+.input-group input:-webkit-autofill:focus,
+.input-group input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(30, 30, 30, 1) inset !important;
+  -webkit-text-fill-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #fff;
 }
 
 .submit-btn {

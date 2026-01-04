@@ -27,3 +27,6 @@ class Config:
 
     # 定义图片上传的根目录
     UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
+    
+    # 高德地图 API Key（用于GPS逆地理编码）
+    AMAP_API_KEY = os.environ.get('AMAP_API_KEY') or '70359202ee04f17b6cccde8c709f075c'

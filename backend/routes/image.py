@@ -1,6 +1,7 @@
 # backend/routes/image.py
 import os
 import uuid
+import requests
 import exifread
 from PIL import Image as PILImage # 使用别名避免与 models.Image 冲突
 from flask import Blueprint, request, jsonify, current_app
@@ -18,6 +19,68 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- GPS 坐标提取辅助函数 ---
+def convert_to_degrees(value):
+    """将 EXIF GPS 坐标值转换为十进制度数"""
+    try:
+        d = float(value.values[0].num) / float(value.values[0].den)
+        m = float(value.values[1].num) / float(value.values[1].den)
+        s = float(value.values[2].num) / float(value.values[2].den)
+        return d + (m / 60.0) + (s / 3600.0)
+    except:
+        return None
+
+def extract_gps_coordinates(tags):
+    """从 EXIF 标签中提取 GPS 坐标"""
+    lat = None
+    lon = None
+    
+    if 'GPS GPSLatitude' in tags and 'GPS GPSLatitudeRef' in tags:
+        lat = convert_to_degrees(tags['GPS GPSLatitude'])
+        if lat and str(tags['GPS GPSLatitudeRef']) == 'S':
+            lat = -lat
+    
+    if 'GPS GPSLongitude' in tags and 'GPS GPSLongitudeRef' in tags:
+        lon = convert_to_degrees(tags['GPS GPSLongitude'])
+        if lon and str(tags['GPS GPSLongitudeRef']) == 'W':
+            lon = -lon
+    
+    if lat and lon:
+        return (lat, lon)
+    return None
+
+def reverse_geocode_amap(lat, lon, api_key):
+    """使用高德地图 API 进行逆地理编码，返回城市名"""
+    if not api_key:
+        return None
+    
+    try:
+        # 高德API需要 经度,纬度 格式
+        url = f"https://restapi.amap.com/v3/geocode/regeo?key={api_key}&location={lon},{lat}&extensions=base"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        
+        if data.get('status') == '1' and data.get('regeocode'):
+            address_component = data['regeocode'].get('addressComponent', {})
+            province = address_component.get('province', '')
+            city = address_component.get('city', '')
+            
+            # 直辖市的 city 可能是空列表
+            if isinstance(city, list):
+                city = ''
+            if isinstance(province, list):
+                province = ''
+            
+            # 返回省份或城市作为标签
+            if city:
+                return city
+            elif province:
+                return province
+        return None
+    except Exception as e:
+        print(f"逆地理编码失败: {e}")
+        return None
 
 @image_bp.route('/upload', methods=['POST'])
 @jwt_required() # <--- 这是一个“保护器”，确保只有携带有效JWT的请求才能访问此路由
@@ -72,6 +135,23 @@ def upload_image():
                     # 日期格式不规范，忽略
                     pass
 
+            # --- 新增：从EXIF中提取GPS地点 ---
+            location_tag = None
+            gps_coords = extract_gps_coordinates(tags)
+            if gps_coords:
+                lat, lon = gps_coords
+                # 获取高德API Key（从环境变量或配置）
+                amap_key = current_app.config.get('AMAP_API_KEY') or os.environ.get('AMAP_API_KEY')
+                if amap_key:
+                    location_tag = reverse_geocode_amap(lat, lon, amap_key)
+                    if location_tag:
+                        print(f"GPS坐标 ({lat}, {lon}) -> 地点: {location_tag}")
+                else:
+                    # 如果没有API Key，至少保存坐标信息到 exif_data
+                    exif_data['GPS_Latitude'] = str(lat)
+                    exif_data['GPS_Longitude'] = str(lon)
+                    print(f"发现GPS坐标 ({lat}, {lon})，但未配置高德API Key，无法逆地理编码")
+
             # 使用Pillow库处理图片
             with PILImage.open(original_path) as img:
                 # 获取分辨率
@@ -100,20 +180,25 @@ def upload_image():
             db.session.flush()
             
             # --- 新增：处理自动生成的标签 ---
+            auto_tags = []
             if date_time_tag:
+                auto_tags.append(date_time_tag)
+            if location_tag:
+                auto_tags.append(location_tag)
+            
+            for tag_name in auto_tags:
                 # 查找标签是否已存在
-                tag_obj = Tag.query.filter_by(name=date_time_tag).first()
+                tag_obj = Tag.query.filter_by(name=tag_name).first()
                 
                 # 如果标签不存在，则创建新标签
                 if not tag_obj:
-                    tag_obj = Tag(name=date_time_tag)
+                    tag_obj = Tag(name=tag_name)
                     db.session.add(tag_obj)
-                    # 再次 flush，让新标签也获得 id
                     db.session.flush()
                 
                 # 将图片和标签关联起来
-                # 我们在 Image 模型中定义了 tags 关系，可以直接 append
                 new_image.tags.append(tag_obj)
+            
             # 提交整个事务（图片信息和标签关联）
             db.session.commit()
             return jsonify({"message": "图片上传成功", "imageId": new_image.id}), 201
