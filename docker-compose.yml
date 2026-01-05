@@ -1,7 +1,29 @@
 # 图片管理网站 Docker Compose 配置
-# 注意：此配置使用外部 MySQL 数据库（本地已安装的）
+# 完整版：包含 MySQL + Flask 后端 + Vue 前端
 
 services:
+  # MySQL 数据库
+  db:
+    image: mysql:8.0
+    container_name: imagesite-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-image_db}
+      MYSQL_USER: ${MYSQL_USER:-imageuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-imagepass123}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Flask 后端
   backend:
     build: ./backend
@@ -10,10 +32,10 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-in-production}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-jwt-super-secret-key}
-      - DB_HOST=host.docker.internal
+      - DB_HOST=db
       - DB_PORT=3306
-      - DB_USER=${MYSQL_USER:-root}
-      - DB_PASSWORD=${MYSQL_PASSWORD:-123456}
+      - DB_USER=${MYSQL_USER:-imageuser}
+      - DB_PASSWORD=${MYSQL_PASSWORD:-imagepass123}
       - DB_NAME=${MYSQL_DATABASE:-image_db}
       - AMAP_API_KEY=${AMAP_API_KEY:-70359202ee04f17b6cccde8c709f075c}
       - BAIDU_API_KEY=${BAIDU_API_KEY:-1xDSi4T1GGwAK3qX8xYfocvo}
@@ -22,8 +44,9 @@ services:
       - "5000:5000"
     volumes:
       - uploads_data:/app/uploads
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
 
   # Vue 前端
   frontend:
@@ -36,4 +59,5 @@ services:
       - backend
 
 volumes:
+  mysql_data:
   uploads_data:
