@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import RegisterView from '../views/RegisterView.vue' 
+import RegisterView from '../views/RegisterView.vue'
 import LoginView from '../views/LoginView.vue'
 import GalleryView from '../views/GalleryView.vue' // 1. 导入画廊视图
+import ChatView from '../views/ChatView.vue' // 智能搜索
 import { useAuthStore } from '@/stores/auth' // 导入 auth store
 
 const router = createRouter({
@@ -21,13 +22,19 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: LoginView 
+      component: LoginView
     },
     {
       path: '/gallery',
       name: 'gallery',
       component: GalleryView,
       meta: { requiresAuth: true } // 2. 添加一个元信息，表示这个路由需要认证
+    },
+    {
+      path: '/chat',
+      name: 'chat',
+      component: ChatView,
+      meta: { requiresAuth: true }
     }
   ],
 })

@@ -38,6 +38,9 @@ def create_app(config_class=Config):
     # --- 新增 ---
     from routes.tag import tag_bp
     app.register_blueprint(tag_bp, url_prefix='/api/tags')
+    # --- 智能搜索 ---
+    from routes.chat import chat_bp
+    app.register_blueprint(chat_bp, url_prefix='/api/chat')
     # 一个简单的测试路由
     @app.route('/')
     def index():

@@ -1,0 +1,39 @@
+# 图片管理网站 Docker Compose 配置
+# 注意：此配置使用外部 MySQL 数据库（本地已安装的）
+
+services:
+  # Flask 后端
+  backend:
+    build: ./backend
+    container_name: imagesite-backend
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-jwt-super-secret-key}
+      - DB_HOST=host.docker.internal
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER:-root}
+      - DB_PASSWORD=${MYSQL_PASSWORD:-123456}
+      - DB_NAME=${MYSQL_DATABASE:-image_db}
+      - AMAP_API_KEY=${AMAP_API_KEY:-70359202ee04f17b6cccde8c709f075c}
+      - BAIDU_API_KEY=${BAIDU_API_KEY:-1xDSi4T1GGwAK3qX8xYfocvo}
+      - BAIDU_SECRET_KEY=${BAIDU_SECRET_KEY:-f8FpQtbRKLDaLXm0ta7YNJkvmFkdePGS}
+    ports:
+      - "5000:5000"
+    volumes:
+      - uploads_data:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Vue 前端
+  frontend:
+    build: ./frontend/vue-project
+    container_name: imagesite-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  uploads_data:

@@ -18,6 +18,10 @@ const authStore = useAuthStore();
           <span class="nav-icon">🖼️</span>
           <span>我的画廊</span>
         </RouterLink>
+        <RouterLink to="/chat" class="nav-link">
+          <span class="nav-icon">🔍</span>
+          <span>智能搜索</span>
+        </RouterLink>
         <a href="#" class="nav-link" @click.prevent="authStore.logout()">
           <span class="nav-icon">👋</span>
           <span>退出</span>
